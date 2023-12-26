@@ -12,7 +12,7 @@ Requires Clang installed as a configurable compiler and the following extensions
 
 ## TODO
 
-* [X] Fix pathing (currently only creates project directory relative to `create-cpp-project` executable)
+* [X] ~~Fix pathing (currently only creates project directory relative to `create-cpp-project` executable)~~
 * [ ] Implement customizable file templates instead of hard-coded string literals
 * [ ] Provide a more general/robust config setup (maybe read from an INI or something)
 * [ ] Add a flag for launching VSCode automatically
