@@ -2,7 +2,7 @@
 
 Simple command-line tool for quickly bootstrapping C++ projects in VS Code. Currently only setup for my desired preferences, check [TODO](#todo) for coming changes to make this usable by the community and not just me.
 
-Requires Clang installed as a configurable compiler and the following extensions installed/configured in VSCode:
+Generated projects require Clang installed as a configurable compiler and the following extensions installed/configured in VSCode:
 
 - [Clang-Format](https://marketplace.visualstudio.com/items?itemName=xaver.clang-format)
 - [clangd](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd)eez nuts
