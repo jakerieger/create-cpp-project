@@ -34,11 +34,17 @@ struct configuration {
     CXX_STANDARD cxx_standard;
 };
 
+struct directories {
+    string project_path;
+    string vscode_path;
+    string src_path;
+};
+
 result<configuration, error> process_args(args_t);
 result<string, error> exec_command(const char*);
 result<string, error> get_cwd();
-result<void, error> create_directories();
-result<void, error> create_files();
+result<directories, error> create_directories(const string&, const string&);
+result<void, error> create_files(const directories&, const configuration&);
 
 //==============================================================//
 //                            MAIN                              //
@@ -59,17 +65,35 @@ int main(int argc, char* argv[]) {
 
     auto config = process_args_result.value();
 
-    // Create project directory
-    string cwd_str;
+    // Create project directories
     auto get_cwd_result = get_cwd();
     if (get_cwd_result.has_error()) {
         printf("error: '%s'\n", get_cwd_result.error().message().c_str());
         return 1;
     }
 
-    cwd_str = get_cwd_result.value();
+    string cwd = get_cwd_result.value();
+    auto create_dirs_result = create_directories(cwd, config.project_name);
+    if (create_dirs_result.has_error()) {
+        printf("error: '%s'\n", create_dirs_result.error().message().c_str());
+        return 1;
+    }
 
-    fs::path project_path = join(cwd_str, config.project_name);
+    directories dirs = create_dirs_result.value();
+
+    auto create_files_result = create_files(dirs, config);
+    if (create_files_result.has_error()) {
+        printf("error: '%s'\n", create_files_result.error().message().c_str());
+        return 1;
+    }
+
+    // TODO: implement opening project dir in VSCode automatically
+
+    return 0;
+}
+
+result<directories, error> create_directories(const string& cwd, const string& project_name) {
+    fs::path project_path = join(cwd, project_name);
     fs::create_directory(project_path);
 
     // Create subdirectories
@@ -82,8 +106,12 @@ int main(int argc, char* argv[]) {
     fs::create_directory(inc_path);
     fs::create_directory(vend_path);
 
+    return directories{project_path.string(), vscode_path.string(), src_path.string()};
+}
+
+result<void, error> create_files(const directories& dirs, const configuration& config) {
     // Create .clang-format
-    string clang_format_path = project_path.string() + "\\.clang-format";
+    string clang_format_path = dirs.project_path + "\\.clang-format";
     std::ofstream clang_format_file(clang_format_path);
     clang_format_file << CLANG_FORMAT;
     clang_format_file.close();
@@ -94,13 +122,13 @@ int main(int argc, char* argv[]) {
     cmake_lists_txt = find_replace(
             cmake_lists_txt, "##PROJECT_STD##", std::to_string((uint8_t) config.cxx_standard));
 
-    string cmake_lists_path = project_path.string() + "\\CMakeLists.txt";
+    string cmake_lists_path = dirs.project_path + "\\CMakeLists.txt";
     std::ofstream cmake_lists_file(cmake_lists_path);
     cmake_lists_file << cmake_lists_txt;
     cmake_lists_file.close();
 
     // Create main source file
-    string maincpp_path = src_path.string() + "\\main.cpp";
+    string maincpp_path = dirs.src_path + "\\main.cpp";
     std::ofstream maincpp_file(maincpp_path);
     maincpp_file << MAINCPP;
     maincpp_file.close();
@@ -108,19 +136,17 @@ int main(int argc, char* argv[]) {
     // Create vscode config files
     string launch_json = LAUNCH_JSON;
     launch_json = find_replace(launch_json, "##PROJECT_NAME##", config.project_name);
-    string launch_json_path = vscode_path.string() + "\\launch.json";
+    string launch_json_path = dirs.vscode_path + "\\launch.json";
     std::ofstream launch_json_file(launch_json_path);
     launch_json_file << launch_json;
     launch_json_file.close();
 
-    string settings_json_path = vscode_path.string() + "\\settings.json";
+    string settings_json_path = dirs.vscode_path + "\\settings.json";
     std::ofstream settings_json_file(settings_json_path);
     settings_json_file << SETTINGS_JSON;
     settings_json_file.close();
 
-    // TODO: implement opening project dir in VSCode automatically
-
-    return 0;
+    return {};
 }
 
 result<string, error> get_cwd() {
