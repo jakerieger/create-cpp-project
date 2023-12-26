@@ -1,13 +1,11 @@
 #include "file_formats.h"
 #include "result.hpp"
 #include "utility.h"
-#include <array>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -41,7 +39,6 @@ struct directories {
 };
 
 result<configuration, error> process_args(args_t);
-result<string, error> exec_command(const char*);
 result<string, error> get_cwd();
 result<directories, error> create_directories(const string&, const string&);
 result<void, error> create_files(const directories&, const configuration&);
@@ -73,6 +70,7 @@ int main(int argc, char* argv[]) {
     }
 
     string cwd = get_cwd_result.value();
+
     auto create_dirs_result = create_directories(cwd, config.project_name);
     if (create_dirs_result.has_error()) {
         printf("error: '%s'\n", create_dirs_result.error().message().c_str());
@@ -81,6 +79,7 @@ int main(int argc, char* argv[]) {
 
     directories dirs = create_dirs_result.value();
 
+    // Create project files
     auto create_files_result = create_files(dirs, config);
     if (create_files_result.has_error()) {
         printf("error: '%s'\n", create_files_result.error().message().c_str());
@@ -188,19 +187,4 @@ result<configuration, error> process_args(args_t args) {
     }
 
     return config;
-}
-
-result<string, error> exec_command(const char* cmd) {
-    using namespace std;
-    array<char, 128> buffer;
-    string result;
-    unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
-    if (!pipe) {
-        return fail(error("popen() failed"));
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-
-    return result;
 }
