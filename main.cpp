@@ -11,6 +11,21 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <direct.h>
+// Microsoft wants us to use _getcwd instead of getcwd, which breaks POSIX
+// compatibility. See the following link for more information:
+// https://stackoverflow.com/questions/7582394/strdup-or-strdup
+// Therefore we must disable the compiler warning if we want to use getcwd
+// to maintain POSIX compatibility. This is accomplished with the following
+// line.
+#pragma warning(disable : 4996)
+#else
+#include <unistd.h>
+#endif
+
+#define BUF_SIZE 260
+
 using namespace cpp;
 using args_t = std::vector<string>;
 
@@ -21,6 +36,9 @@ struct configuration {
 
 result<configuration, error> process_args(args_t);
 result<string, error> exec_command(const char*);
+result<string, error> get_cwd();
+result<void, error> create_directories();
+result<void, error> create_files();
 
 //==============================================================//
 //                            MAIN                              //
@@ -30,8 +48,6 @@ int main(int argc, char* argv[]) {
         printf("error: No arguments or too few provided\n");
         return 1;
     }
-
-    namespace fs = std::filesystem;
 
     args_t arguments(argv + 1, argv + argc);
     auto process_args_result = process_args(arguments);
@@ -44,14 +60,23 @@ int main(int argc, char* argv[]) {
     auto config = process_args_result.value();
 
     // Create project directory
-    fs::path project_path = fs::current_path().append(config.project_name);
+    string cwd_str;
+    auto get_cwd_result = get_cwd();
+    if (get_cwd_result.has_error()) {
+        printf("error: '%s'\n", get_cwd_result.error().message().c_str());
+        return 1;
+    }
+
+    cwd_str = get_cwd_result.value();
+
+    fs::path project_path = join(cwd_str, config.project_name);
     fs::create_directory(project_path);
 
     // Create subdirectories
-    fs::path vscode_path = fs::current_path().append(config.project_name).append(".vscode");
-    fs::path src_path = fs::current_path().append(config.project_name).append("src");
-    fs::path inc_path = fs::current_path().append(config.project_name).append("include");
-    fs::path vend_path = fs::current_path().append(config.project_name).append("vendor");
+    fs::path vscode_path = join(project_path.string(), ".vscode");
+    fs::path src_path = join(project_path.string(), "src");
+    fs::path inc_path = join(project_path.string(), "include");
+    fs::path vend_path = join(project_path.string(), "vendor");
     fs::create_directory(vscode_path);
     fs::create_directory(src_path);
     fs::create_directory(inc_path);
@@ -96,6 +121,17 @@ int main(int argc, char* argv[]) {
     // TODO: implement opening project dir in VSCode automatically
 
     return 0;
+}
+
+result<string, error> get_cwd() {
+    char buffer[BUF_SIZE];
+    char* p;
+    p = getcwd(buffer, BUF_SIZE);
+    if (p == nullptr) {
+        return fail(error("Could not get current working directory"));
+    }
+
+    return string(buffer);
 }
 
 result<configuration, error> process_args(args_t args) {

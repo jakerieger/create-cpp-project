@@ -1,9 +1,11 @@
 #pragma once
 
+#include <filesystem>
 #include <regex>
 #include <string>
 
-using std::string;
+using string = std::string;
+namespace fs = std::filesystem;
 
 class error {
 public:
@@ -28,4 +30,8 @@ enum class CXX_STANDARD : uint8_t {
 
 inline string find_replace(const string& in_str, const string& match, const string& repl_str) {
     return std::regex_replace(in_str, std::regex(match), repl_str);
+}
+
+inline fs::path join(string root, string appendix) {
+    return fs::path(root).append(appendix);
 }
